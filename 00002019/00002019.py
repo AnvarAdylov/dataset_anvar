@@ -4,40 +4,43 @@ from cadquery import selectors
 
 A = 0.022
 B = 0.0046
+half_height = 0.027
 gap_width = 0.008
+gap_height = 0.009
 full_width = 0.022
 inner_radius = 0.0008
 depth_cyl = 0.007
 space_between = 0.01
+hole_offset = 0.005
 
 result = (
     cq.Workplane("XY")
     .rect(
         B, A
     )
-    .extrude(0.027)
+    .extrude(half_height)
 )
 rectangle_cut = (
     cq.Workplane("XY")
     .rect(
         B, gap_width
     )
-    .extrude(0.009)
+    .extrude(gap_height)
 )
 result = result.cut(rectangle_cut)
 circleHole1 = (
     cq.Workplane("XY")
-    .workplane(offset=0.02)
-    .center(0, 0.005)
+    .workplane(offset=half_height-depth_cyl)
+    .center(0, hole_offset)
     .circle(inner_radius)
-    .extrude(0.007)
+    .extrude(depth_cyl)
 )
 circleHole2 = (
     cq.Workplane("XY")
-    .workplane(offset=0.02)
-    .center(0, -0.005)
+    .workplane(offset=half_height-depth_cyl)
+    .center(0, -hole_offset)
     .circle(inner_radius)
-    .extrude(0.007)
+    .extrude(depth_cyl)
 )
 result = result.cut(circleHole1)
 result = result.cut(circleHole2)
