@@ -17,7 +17,7 @@ def build_part(
     hole_chamfer_z,     # Z where the chamfer meets the small through-hole
     hole_r,             # radius of the small through-hole
     n_beams=12,        # number of support beams in the groove ring
-    beam_arc=None, # arc length of each beam; None = equal split (beam == gap)
+    beam_arc=None, # arc length of each beam;
 ):
     pts = [
         (hole_r, 0.0),
@@ -39,33 +39,47 @@ def build_part(
     solid = profile.revolve(360, (0, 0), (0, 1))
     if n_beams:
         ring_width = rim_wall_r - groove_r
+        mid_r = (rim_wall_r + groove_r) / 2.0
 
-
-        gap_fraction = 0.945
-        pitch_angle = 360.0 / n_beams
-        slot_angle = 360.0 / n_beams * gap_fraction   # degrees
-        beam_angle = pitch_angle - slot_angle
-
-        slot_profile = (
-           cq.Workplane("XZ")
+        if beam_arc is None:
+            beam_arc = (2.0 * math.pi * mid_r / n_beams) / 2.0
+        ring_profile = (
+            cq.Workplane("XZ")
             .polyline([
-                (groove_r, -0.001),          
+                (groove_r, -0.001),
                 (rim_wall_r, -0.001),
                 (rim_wall_r, height + 0.001),
                 (groove_r, height + 0.001),
             ])
             .close()
         )
-        one_slot = slot_profile.revolve(slot_angle, (0, 0), (0, 1))
+        ring_solid = ring_profile.revolve(360, (0, 0), (0, 1))
+        solid = solid.cut(ring_solid)
+        beam_box = (
+            cq.Workplane("XY")
+             .box(ring_width, beam_arc, groove_floor_z + beam_arc,
+                 centered=(True, True, False))
+            .translate((mid_r, 0, groove_floor_z-0.001))
+        )
 
-        cutter = cq.Workplane("XY")
+        trim_profile = (
+            cq.Workplane("XZ")
+            .polyline([
+                (groove_r, 0),
+                (rim_wall_r, 0),
+                (rim_wall_r, groove_floor_z),
+                (groove_r, groove_floor_z),
+            ])
+            .close()
+        )
+        trim_solid = trim_profile.revolve(360, (0, 0), (0, 1))
+
+        beam = beam_box.intersect(trim_solid)
+
         for i in range(n_beams):
-            ang = beam_angle / 2.0 + pitch_angle * i
-            cutter = cutter.union(
-                one_slot.rotate((0, 0, 0), (0, 0, 1), ang)
+            solid = solid.union(
+                beam.rotate((0, 0, 0), (0, 0, 1), 360.0 / n_beams * i)
             )
-
-        solid = solid.cut(cutter)
     show(solid)
     return solid
 
@@ -84,6 +98,7 @@ part_small = build_part(
     hole_chamfer_z=0.00160,
     hole_r=0.00355,
     n_beams=12,
+    beam_arc=0.001
 )
 
 
